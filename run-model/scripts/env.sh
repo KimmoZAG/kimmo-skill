@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_model skill 通用环境准备层（与模型无关，幂等，可重复 source）
+# run-model skill 通用环境准备层（与模型无关，幂等，可重复 source）
 # 完成：conda env lmcache 确认 → CANN set_env.sh → shim 五通道清理 → MAX_JOBS
 # 禁止为本个模型修改本文件（见 SKILL.md 扩展性契约）。
 

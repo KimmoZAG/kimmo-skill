@@ -1,9 +1,9 @@
 ---
-name: git_clarify
+name: git-clarify
 description: 本机环境的 Git/GitHub 使用规范。本 skill 应在执行任何涉及 GitHub 的 git 操作（clone、push、pull、remote 配置、SSH 认证）前显式导入，用于规避本环境特有的网络与权限陷阱：GitHub 直连 443 超时必须走 SSH、容器重启后 SSH 密钥权限被重置、失效的 GIT_SSH_COMMAND 助手。
 ---
 
-# git_clarify：本环境 Git/GitHub 使用规范
+# git-clarify：本环境 Git/GitHub 使用规范
 
 本机所有 GitHub 操作只有一种正确姿势：**SSH，且必须经 `ssh.github.com:443`**。直连 `github.com:443` 被墙/超时，任何 `https://github.com/...` 的 clone/push 都会卡死。
 

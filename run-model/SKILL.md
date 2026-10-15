@@ -1,13 +1,13 @@
 ---
-name: run_model
+name: run-model
 description: 在 aarch64 + 昇腾 Ascend 910B 容器上准备 vLLM 运行环境，并按模型 profile 启动、重启、验证大模型推理服务（如 Qwen3.5-35B-A3B）。本 skill 应在以下场景使用：在 NPU/Ascend 上部署或重启 vLLM 服务、启动前清理 IDE shim 等环境污染、排查 worker 秒死/`No module named 'acl'` 等启动故障、对已注册模型做 REST 冒烟或 vllm bench 压测、新增模型接入。包含与模型无关的通用环境准备层和可插拔的模型 profile 层。
 ---
 
-# run_model：Ascend NPU 上 vLLM 环境准备与模型启动
+# run-model：Ascend NPU 上 vLLM 环境准备与模型启动
 
 > kimmo-skill 系列之一；后续新 skill 与本 skill 平级放置于同一父目录 `kimmo-skill/` 下，各 skill 内部只做相对引用，互不依赖。
 
-本 skill 可安装在任意路径（如 `~/.codebuddy/skills/kimmo-skill/run_model/`）。以下 `<SKILL>` 统一指本 SKILL.md 所在目录（skill 加载时会给出的 base directory）；skill 内部脚本经 `BASH_SOURCE` 自定位，与安装位置和当前工作目录无关，可整体迁移。仅环境层路径（conda、CANN、模型库）为本机固定路径。
+本 skill 可安装在任意路径（如 `~/.codebuddy/skills/kimmo-skill/run-model/`）。以下 `<SKILL>` 统一指本 SKILL.md 所在目录（skill 加载时会给出的 base directory）；skill 内部脚本经 `BASH_SOURCE` 自定位，与安装位置和当前工作目录无关，可整体迁移。仅环境层路径（conda、CANN、模型库）为本机固定路径。
 
 两层严格解耦的设计：
 

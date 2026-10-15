@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_model skill 通用启动器：按 profile 组装并启动 vllm serve
+# run-model skill 通用启动器：按 profile 组装并启动 vllm serve
 # 用法：
 #   serve.sh                          # 列出全部可用 profile
 #   serve.sh <profile> [选项] [额外 vllm 参数...]
