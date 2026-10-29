@@ -12,68 +12,54 @@ description: 按 Conventional Commits 规范生成英文 commit message 并完�
 1. **禁止** `git add -A`、`git add .`、`git commit -a`。一律按路径精确暂存。
 2. **禁止** `git commit --amend`、`git push`、`git config` 改动，除非用户明确要求。
 3. **禁止** `--no-verify` 绕过 hook，除非用户明确要求。
-4. 未看清 `git diff` 与 `git diff --staged` 之前不得写 message。
+4. 未看清 `git diff HEAD`（覆盖已暂存与未暂存）之前不得写 message。
 5. 无变更（工作区与 index 均干净）时直接终止，不构造空提交。
 
 ## 工作流
 
-### Step 1 前置校验
+目标：常规提交在 **3–4 次命令调用**内完成。所有信息性查询合并成一条命令，一次拿全。
+
+### Step 1 一次采集
 
 ```bash
-git rev-parse --is-inside-work-tree
+git rev-parse --is-inside-work-tree >/dev/null || echo NOT_A_REPO
 git branch --show-current
 git status --short
+git --no-pager diff HEAD --stat
+git --no-pager log --oneline -5
 ```
 
 - 非 git 仓库 → 终止并说明。
-- 无任何输出（干净）→ 终止并说明。
-- 当前分支为 `main` / `master` → 提示用户"正在主分支直接提交"，等待确认后再继续。
+- `git status --short` 无输出 → 终止并说明（无变更，不构造空提交）。
+- `git diff HEAD` 同时覆盖已暂存与未暂存，**不要**再分别执行 `git diff` / `git diff --staged`。
+- 当前分支是 `main` / `master` → **不阻塞、不弹窗**，继续提交，只在汇报中标注一句。
+- 在同一个 shell 里串联执行（`cd <repo> && ...`），不要为每条查询单开一次调用。
 
-### Step 2 收集上下文
-
-```bash
-git diff --stat          # 未暂存概览
-git diff                 # 未暂存明细
-git diff --staged        # 已暂存明细
-git log --oneline -10    # 仓库既有风格
-```
-
-三份 diff 缺一不可：只看其中之一会漏掉已暂存或未暂存的一半改动。若已有暂存内容，明确区分"本次要提交的部分"与"留下的部分"。
-
-### Step 3 敏感文件排查
-
-对变更文件列表做扫描，命中即不暂存、先告警：
+### Step 2 敏感排查 + 变更分析（一条命令）
 
 ```bash
-git diff --name-only; git diff --staged --name-only | sort -u \
-  | grep -Ei '\.env|\.pem|\.key$|id_rsa|credential|secret|token|\.p12$|\.keystore$'
+git status --porcelain | awk '{print $2}' | sort -u \
+  | grep -Ei '\.env|\.pem|\.key$|id_rsa|credential|secret|token|\.p12$|\.keystore$' || echo NO_SECRET_HITS
 ```
 
-同时注意误提交的构建产物、依赖目录（`node_modules/`、`dist/`、`target/`、`__pycache__/`）与超大二进制文件。
+同时目视排查构建产物与依赖目录（`node_modules/`、`dist/`、`target/`、`__pycache__/`）及超大二进制。
 
-### Step 4 变更分析
+分析按**意图/功能**归类，回答三问再落笔：为什么改 / 行为上改了什么 / 有什么影响（破坏性、迁移成本、依赖变化）。无关改动（格式化噪音、临时调试代码、别的需求）不得混入同一次提交。
 
-按**意图/功能**归类，而非按文件罗列。先回答三问，再落笔：
+**不读文件正文来推断改动**：禁止用 `cat`、`sed -n`、`head` 扫源码或 README 去"了解改动"，`git diff HEAD` 已是完整依据。确需理解语义时用 `grep -n` 精确取用，或只读 diff 涉及的片段。
 
-- 为什么改（动机 / 修的问题）
-- 改了什么（行为层面的差异，不是行数）
-- 有什么影响（破坏性、迁移成本、依赖变化）
-
-无关改动（格式化噪音、临时调试代码、别的需求）不得混入同一次提交。
-
-### Step 5 精确暂存 + 清单
+### Step 3 精确暂存
 
 ```bash
-git add -- <file1> <file2>
-git diff --cached --stat
+git add -- <file1> <file2> && git --no-pager diff --cached --stat
 ```
 
-- 先列出将要暂存的文件清单。
-- 清单中若含与本次意图无关的文件或 Step 3 命中的敏感文件 → 停下来询问，不要继续。
-- 其余情况列清单后直接继续，无需多轮确认。
-- 用 `git diff --cached` 复核：确认暂存内容就是清单里那些改动。
+- 在回复中列出将暂存的文件清单，然后**直接继续**，不要再等确认。
+- 仅两种情况停下询问：清单含 Step 2 命中的敏感文件，或含与本次意图无关的文件。
+- 禁止 `git add -A`、`git add .`、`git commit -a`。
+- 暂存后不要重复 `git status`：`git diff --cached --stat` 已能复核暂存内容。
 
-### Step 6 撰写 message
+### Step 4 撰写 message
 
 格式：
 
@@ -127,7 +113,7 @@ git diff --cached --stat
 BREAKING CHANGE: <不兼容点与迁移方式>
 ```
 
-### Step 7 提交
+### Step 5 提交
 
 用 heredoc 保留换行与反引号，不拼接多个 `-m`：
 
@@ -144,20 +130,27 @@ EOF
 
 不添加任何 AI 署名 / `Co-authored-by` / 生成工具标记，除非用户明确要求。
 
-### Step 8 hook 失败处理
+### Step 6 hook 失败处理
 
 1. 完整读取 hook 报错，定位真实原因（lint、类型、测试、commitlint 长度或格式限制）。
 2. 修复代码或调整 message 后，**重新 `git add`** 被 hook 自动格式化改动的文件。
 3. 重试同一命令。连续 3 次仍失败则停止，向用户报告原始报错，不要绕过 hook。
 
-### Step 9 校验
+### Step 7 校验（一条命令）
 
 ```bash
-git log -1 --stat
-git status --short
+git --no-pager log -1 --format='%h %s' --stat; git status --short
 ```
 
-确认：message 已正确落盘、提交内文件与清单一致、工作区剩余改动符合预期（应只剩刻意留下的部分）。
+确认：message 正确落盘、提交内文件与暂存清单一致、剩余改动符合预期。
+
+## 效率约定
+
+1. 用 `;` / `&&` 把多条查询串进同一个 shell 调用，一次拿全信息，而不是一个信息一次调用。
+2. 已获得的信息直接复用，不重复执行 `git status`、`git log`、`git diff`。
+3. 不为"确认"多开一轮对话：只有敏感文件、无关文件、hook 连续失败 3 次才提问。
+4. 不读源码/文档正文来推断改动，diff 已足够。
+5. 汇报 ≤ 3 行，不逐条罗列已完成的检查项。
 
 ## message 示例
 
@@ -204,9 +197,12 @@ feat: misc changes + format + bump deps   # 多意图混杂
 
 ## 汇报格式
 
-提交成功后输出：
+提交成功后 ≤ 3 行，不写逐项检查清单：
 
-- 短 hash 与摘要行
-- 本次提交的文件数
-- 工作区剩余未提交内容（若有，说明为何留下）
-- hook 是否触发过、是否被修复
+```
+<短 hash> <摘要行>  (N files, +X/-Y)[, 已在 main 直接提交]
+工作区：干净 / 剩余 <文件>（未提交，原因一句话）
+Hook：未触发 / 触发并已修复
+```
+
+不要复述"已扫描敏感文件""已复核暂存"等过程项。
